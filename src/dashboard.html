@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Análise de Natação</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c1545 0%, #040821 100%);
+            min-height: 100vh;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            margin: 10px 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .evaluation-switch {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px 25px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .switch-label {
+            font-weight: bold;
+            color: white;
+            font-size: 1.1em;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .current-evaluation {
+            color: #f7f7f7;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        #compareBtn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 1em;
+            font-weight: bold;
+            color: #764ba2;
+            background-color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        #compareBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .tables-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow-x: auto;
+        }
+        
+        .table-container h3 {
+            margin-top: 0;
+            color: #333;
+            text-align: center;
+            font-size: 1.4em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #0c1545, #040821);
+            color: white;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        tr:hover {
+            background-color: #e6f3ff;
+        }
+        
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            height: 500px;
+        }
+        
+        .chart-container h3 {
+            margin-top: 0;
+            color: #333;
+            text-align: center;
+            font-size: 1.3em;
+        }
+        
+        .chart {
+            width: 100%;
+            height: calc(100% - 40px);
+        }
+        
+        .fade-transition {
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .fade-out {
+            opacity: 0.3;
+        }
+
+        /* --- Tooltip Styles --- */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 0.8em;
+            color: #555;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 280px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 10;
+            bottom: 150%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.9rem;
+            font-weight: normal;
+            line-height: 1.5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .tooltip-text::after {
+             content: "";
+             position: absolute;
+             top: 100%;
+             left: 50%;
+             margin-left: -5px;
+             border-width: 5px;
+             border-style: solid;
+             border-color: #333 transparent transparent transparent;
+        }
+
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* --- Modal Styles --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 2% auto;
+            padding: 25px;
+            border: 1px solid #888;
+            width: 95%;
+            max-width: 1600px;
+            border-radius: 15px;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from {opacity: 0; transform: scale(0.95);}
+            to {opacity: 1; transform: scale(1);}
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .modal h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .modal-grid {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .tables-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .charts-section, .modal-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container, .table-container {
+                min-width: unset;
+            }
+            
+            .switch-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .modal-content {
+                margin: 5% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="main-content">
+        <div class="dashboard-container">
+            <div class="header">
+                <h1>Análise de Performance - 200m e 400m</h1>
+                <p>Atleta: Fulano Beltrano da Silva</p>
+                
+                 <div class="evaluation-switch">
+                    <div class="switch-container">
+                        <span class="switch-label">01/01/2025</span>
+                        <label class="switch">
+                             <input type="checkbox" id="evaluationSwitch">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="switch-label">01/03/2025</span>
+                     </div>
+                </div>
+                
+                <p>Avaliação Atual: <span class="current-evaluation" id="currentEvaluation">01/01/2025</span></p>
+                <button id="compareBtn">📊 Comparar Avaliações</button>
+            </div>
+            
+            <div class="tables-section fade-transition" id="tablesSection">
+                <div class="table-container">
+                    <h3>Estatísticas - 200m</h3>
+                    <table id="table200m">
+                         <thead>
+                            <tr>
+                                <th>Distância (m)</th>
+                                 <th>Tempo/25m (s)</th>
+                                <th>Braçadas</th>
+                                <th>Velocidade (m/s)</th>
+                                <th>SL (m/braçada)</th>
+                                 <th>IE</th>
+                                <th>Swolf</th>
+                                <th>Taxa Braçadas (bpm)</th>
+                             </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                 </div>
+                
+                <div class="table-container">
+                    <h3>Estatísticas - 400m</h3>
+                    <table id="table400m">
+                         <thead>
+                            <tr>
+                                <th>Distância (m)</th>
+                                 <th>Tempo/25m (s)</th>
+                                <th>Braçadas</th>
+                                <th>Velocidade (m/s)</th>
+                                 <th>SL (m/braçada)</th>
+                                <th>IE</th>
+                                <th>Swolf</th>
+                                <th>Taxa Braçadas (bpm)</th>
+                             </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                 </div>
+            </div>
+            
+            <div class="charts-section fade-transition" id="chartsSection">
+                <div class="chart-container">
+                    <h3>Velocidade (m/s)<span class="tooltip-container">ℹ️<span class="tooltip-text">Ritmo de deslocamento do nadador em cada parcial de 25m. Quanto mais alta e constante, melhor.</span></span></h3>
+                     <div id="chart_vel" class="chart"></div>
+                </div>
+                <div class="chart-container">
+                    <h3>Comprimento de Braçada (SL)<span class="tooltip-container">ℹ️<span class="tooltip-text">A distância percorrida por braçada — mostra o alcance técnico do nadador.<br>SL encurtando progressivamente → indica fadiga, perda de técnica etc.</span></span></h3>
+                    <div id="chart_sl" class="chart"></div>
+                 </div>
+                <div class="chart-container">
+                    <h3>Índice de Eficiência (IE)<span class="tooltip-container">ℹ️<span class="tooltip-text">Combina velocidade e comprimento de braçada, dando uma métrica única de eficiência técnica.<br>Maior IE → nadador está rápido e com braçada longa → excelente técnica.<br>IE caindo → perda de força ou técnica ao longo da prova.</span></span></h3>
+                    <div id="chart_ie" class="chart"></div>
+                </div>
+                <div class="chart-container">
+                     <h3>Swolf<span class="tooltip-container">ℹ️<span class="tooltip-text">Índice que combina tempo + nº de braçadas em um parcial.<br>Quanto menor o Swolf, melhor → menos tempo e menos braçadas para cobrir a distância.</span></span></h3>
+                    <div id="chart_swolf" class="chart"></div>
+                </div>
+                <div class="chart-container">
+                    <h3>Análise de Fadiga - 200m<span class="tooltip-container">ℹ️<span class="tooltip-text">Cruzamento de duas informações suavizadas: o tempo médio de cada parcial (ritmo) e a taxa média de braçadas (cadência). Torna possível visualizar como a velocidade e a frequência das braçadas se sustentam.</span></span></h3>
+                     <div id="chart_fadiga_200m" class="chart"></div>
+                </div>
+                <div class="chart-container">
+                    <h3>Análise de Fadiga - 400m<span class="tooltip-container">ℹ️<span class="tooltip-text">Cruzamento de duas informações suavizadas: o tempo médio de cada parcial (ritmo) e a taxa média de braçadas (cadência). Torna possível visualizar como a velocidade e a frequência das braçadas se sustentam.</span></span></h3>
+                    <div id="chart_fadiga_400m" class="chart"></div>
+                 </div>
+            </div>
+        </div>
+
+        <div id="comparisonModal" class="modal">
+            <div class="modal-content">
+                <span class="close-button" id="modalCloseBtn">&times;</span>
+                <h2>Análise Comparativa: 01/01/2025 vs 01/03/2025</h2>
+                 
+                <div class="modal-grid">
+                    <div class="table-container">
+                        <h3>Comparativo 200m (Diferença)</h3>
+                         <table id="diff_table_200m">
+                            <thead>
+                                <tr>
+                                    <th>Dist. (m)</th><th>Tempo/25m</th><th>Braçadas</th><th>Velocidade</th><th>SL</th><th>IE</th><th>Swolf</th><th>Taxa Braç.</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                         </table>
+                    </div>
+
+                    <div class="table-container">
+                        <h3>Comparativo 400m (Diferença)</h3>
+                         <table id="diff_table_400m">
+                             <thead>
+                                <tr>
+                                     <th>Dist. (m)</th><th>Tempo/25m</th><th>Braçadas</th><th>Velocidade</th><th>SL</th><th>IE</th><th>Swolf</th><th>Taxa Braç.</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                         </table>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>Comparativo de Velocidade (m/s)<span class="tooltip-container">ℹ️<span class="tooltip-text">Ritmo de deslocamento do nadador em cada parcial de 25m. Quanto mais alta e constante, melhor.</span></span></h3>
+                         <div id="comp_chart_vel" class="chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Comparativo de Comprimento de Braçada (SL)<span class="tooltip-container">ℹ️<span class="tooltip-text">A distância percorrida por braçada — mostra o alcance técnico do nadador.<br>SL encurtando progressivamente → indica fadiga, perda de técnica etc.</span></span></h3>
+                         <div id="comp_chart_sl" class="chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Comparativo de Índice de Eficiência (IE)<span class="tooltip-container">ℹ️<span class="tooltip-text">Combina velocidade e comprimento de braçada, dando uma métrica única de eficiência técnica.<br>Maior IE → nadador está rápido e com braçada longa → excelente técnica.<br>IE caindo → perda de força ou técnica ao longo da prova.</span></span></h3>
+                         <div id="comp_chart_ie" class="chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Comparativo de Swolf<span class="tooltip-container">ℹ️<span class="tooltip-text">Índice que combina tempo + nº de braçadas em um parcial.<br>Quanto menor o Swolf, melhor → menos tempo e menos braçadas para cobrir a distância.</span></span></h3>
+                        <div id="comp_chart_swolf" class="chart"></div>
+                     </div>
+                    <div class="chart-container">
+                        <h3>Análise Comparativa de Fadiga - 200m<span class="tooltip-container">ℹ️<span class="tooltip-text">Cruzamento de duas informações suavizadas: o tempo médio de cada parcial (ritmo) e a taxa média de braçadas (cadência). Torna possível visualizar como a velocidade e a frequência das braçadas se sustentam.</span></span></h3>
+                        <div id="comp_chart_fadiga_200m" class="chart"></div>
+                     </div>
+                    <div class="chart-container">
+                        <h3>Análise Comparativa de Fadiga - 400m<span class="tooltip-container">ℹ️<span class="tooltip-text">Cruzamento de duas informações suavizadas: o tempo médio de cada parcial (ritmo) e a taxa média de braçadas (cadência). Torna possível visualizar como a velocidade e a frequência das braçadas se sustentam.</span></span></h3>
+                        <div id="comp_chart_fadiga_400m" class="chart"></div>
+                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Dados da primeira avaliação (01/01/2025)
+        const evaluation1 = {
+            data_400m: {
+                Distance: [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400],
+                 Time_per_25m: [23.3, 26.8, 28.2, 29.2, 30.4, 30.2, 30.8, 30.7, 30.7, 30.8, 30.8, 31.0, 30.3, 30.9, 29.6, 30.2],
+                Stroke_Count: [25, 26, 27, 27, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28]
+            },
+            data_200m: {
+                Distance: [25, 50, 75, 100, 125, 150, 175, 200],
+                 Time_per_25m: [22.0, 24.0, 26.3, 27.8, 28.6, 29.0, 28.9, 28.2],
+                Stroke_Count: [26, 26, 28, 28, 28, 28, 28, 28]
+            }
+        };
+        // Dados da segunda avaliação (01/03/2025)
+        const evaluation2 = {
+            data_400m: {
+                Distance: [25, 50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400],
+                Time_per_25m: [15.2, 17.9, 17.6, 17.4, 17.4, 17.2, 18, 17.5, 17.8, 17.3, 17.7, 17.1, 17.9, 17.1, 17.2, 15.2],
+                 Stroke_Count: [14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 17]
+            },
+            data_200m: {
+                Distance: [25, 50, 75, 100, 125, 150, 175, 200],
+                Time_per_25m: [14.0, 16.5, 16.1, 16.1, 16.8, 16.7, 16.5, 16.2],
+                 Stroke_Count: [12, 14, 14, 14, 14, 15, 15, 16]
+            }
+        };
+        let currentEvaluation = evaluation1;
+        let isModalPopulated = false;
+
+        function calculateMetrics(data) {
+            const result = {
+                Distance: [...data.Distance],
+                Time_per_25m: [...data.Time_per_25m],
+                Stroke_Count: [...data.Stroke_Count],
+                Velocity: [], SL: [], IE: [], Swolf: [], 
+                Stroke_Rate: [],
+                Rolling_Time_per_25m: [], Rolling_Stroke_Rate: []
+            };
+            for (let i = 0; i < data.Distance.length; i++) {
+                const velocity = 25 / data.Time_per_25m[i];
+                const sl = 25 / data.Stroke_Count[i];
+                const ie = velocity * sl;
+                const swolf = data.Time_per_25m[i] + data.Stroke_Count[i];
+                const strokeRate = (data.Stroke_Count[i] * 60) / data.Time_per_25m[i];
+
+                result.Velocity.push(velocity);
+                result.SL.push(sl);
+                result.IE.push(ie);
+                result.Swolf.push(swolf);
+                result.Stroke_Rate.push(strokeRate);
+            }
+            
+            const window_size = 3;
+            for (let i = 0; i < data.Distance.length; i++) {
+                const start = Math.max(0, i - window_size + 1);
+                const end = i + 1;
+                const timeSlice = result.Time_per_25m.slice(start, end);
+                const strokeRateSlice = result.Stroke_Rate.slice(start, end);
+                const avgTime = timeSlice.reduce((a, b) => a + b, 0) / timeSlice.length;
+                const avgStrokeRate = strokeRateSlice.reduce((a, b) => a + b, 0) / strokeRateSlice.length;
+                result.Rolling_Time_per_25m.push(avgTime);
+                result.Rolling_Stroke_Rate.push(avgStrokeRate);
+            }
+            return result;
+        }
+
+        function fillTable(tableId, data) {
+            const tbody = document.querySelector(`#${tableId} tbody`);
+            tbody.innerHTML = '';
+            for (let i = 0; i < data.Distance.length; i++) {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = data.Distance[i];
+                row.insertCell(1).textContent = data.Time_per_25m[i].toFixed(1);
+                row.insertCell(2).textContent = data.Stroke_Count[i];
+                row.insertCell(3).textContent = data.Velocity[i].toFixed(2);
+                row.insertCell(4).textContent = data.SL[i].toFixed(2);
+                row.insertCell(5).textContent = data.IE[i].toFixed(2);
+                row.insertCell(6).textContent = data.Swolf[i].toFixed(1);
+                row.insertCell(7).textContent = data.Stroke_Rate[i].toFixed(1);
+            }
+        }
+
+        const chartLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { family: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', size: 12 },
+            margin: {l: 50, r: 50, t: 30, b: 50},
+             showlegend: true,
+            legend: { orientation: 'h', y: -0.2 }
+        };
+        function createCharts(df_400m, df_200m) {
+            const traces = {
+                vel: [
+                    { x: df_400m.Distance, y: df_400m.Velocity, mode: 'lines+markers', name: '400m', line: {color: '#1f77b4'}, marker: {size: 8}, hovertemplate: 'Vel: %{y:.2f} m/s<extra></extra>' },
+                    { x: df_200m.Distance, y: df_200m.Velocity, mode: 
+                    'lines+markers', name: '200m', line: {color: '#ff7f0e'}, marker: {size: 8}, hovertemplate: 'Vel: %{y:.2f} m/s<extra></extra>' }
+                ],
+                sl: [
+                    { x: df_400m.Distance, y: df_400m.SL, mode: 'lines+markers', name: '400m', line: {color: '#2ca02c'}, marker: {size: 8}, hovertemplate: 'SL: %{y:.2f} m/b<extra></extra>' },
+                     { x: df_200m.Distance, y: df_200m.SL, mode: 'lines+markers', name: '200m', line: {color: '#d62728'}, marker: {size: 8}, hovertemplate: 'SL: %{y:.2f} m/b<extra></extra>' }
+                ],
+                ie: [
+                    { x: df_400m.Distance, y: df_400m.IE, mode: 'lines+markers', name: '400m', line: {color: '#9467bd'}, marker: {size: 8}, hovertemplate: 'IE: %{y:.2f}<extra></extra>' },
+                     { x: df_200m.Distance, y: df_200m.IE, mode: 'lines+markers', name: '200m', line: {color: '#8c564b'}, marker: {size: 8}, hovertemplate: 'IE: %{y:.2f}<extra></extra>' }
+                ],
+                swolf: [
+                    { x: df_400m.Distance, y: df_400m.Swolf, mode: 'lines+markers', name: '400m', line: {color: '#e377c2'}, marker: {size: 
+                    8}, hovertemplate: 'Swolf: %{y:.1f}<extra></extra>' },
+                    { x: df_200m.Distance, y: df_200m.Swolf, mode: 'lines+markers', name: '200m', line: {color: '#7f7f7f'}, marker: {size: 8}, hovertemplate: 'Swolf: %{y:.1f}<extra></extra>' }
+                ]
+            };
+            Plotly.newPlot('chart_vel', traces.vel, { ...chartLayout, xaxis: {title: 'Distância (m)'}, yaxis: {title: 'Velocidade (m/s)'} });
+            Plotly.newPlot('chart_sl', traces.sl, { ...chartLayout, xaxis: {title: 'Distância (m)'}, yaxis: {title: 'SL (m/braçada)'} });
+            Plotly.newPlot('chart_ie', traces.ie, { ...chartLayout, xaxis: {title: 'Distância (m)'}, yaxis: {title: 'IE'} });
+            Plotly.newPlot('chart_swolf', traces.swolf, { ...chartLayout, xaxis: {title: 'Distância (m)'}, yaxis: {title: 'Swolf'} });
+            const fadigaLayout = (y1_color, y2_color) => ({
+                ...chartLayout,
+                xaxis: {title: 'Distância (m)'},
+                yaxis: { title: 'Tempo Médio Parciais (s)', titlefont: {color: y1_color}, tickfont: {color: y1_color} },
+                yaxis2: { title: 'Taxa Média Braçadas (bpm)', titlefont: {color: y2_color}, tickfont: {color: y2_color}, overlaying: 
+                'y', side: 'right' }
+            });
+            Plotly.newPlot('chart_fadiga_200m', [
+                { x: df_200m.Distance, y: df_200m.Rolling_Time_per_25m, mode: 'lines+markers', name: 'Tempo Médio', line: {color: '#1f77b4'}, marker: {size: 8}, hovertemplate: 'Tempo: %{y:.2f}s<extra></extra>' },
+                { x: df_200m.Distance, y: df_200m.Rolling_Stroke_Rate, mode: 'lines+markers', name: 'Taxa Média', yaxis: 'y2', line: {color: '#ff7f0e'}, marker: {size: 8}, hovertemplate: 'Taxa: %{y:.1f} bpm<extra></extra>' }
+            ], fadigaLayout('#1f77b4', '#ff7f0e'));
+            Plotly.newPlot('chart_fadiga_400m', [
+                { x: df_400m.Distance, y: df_400m.Rolling_Time_per_25m, mode: 'lines+markers', name: 'Tempo Médio', line: {color: '#1f77b4'}, marker: {size: 8}, hovertemplate: 'Tempo: %{y:.2f}s<extra></extra>' },
+                { x: df_400m.Distance, y: df_400m.Rolling_Stroke_Rate, mode: 'lines+markers', name: 'Taxa Média', yaxis: 'y2', line: {color: '#ff7f0e'}, marker: {size: 8}, hovertemplate: 'Taxa: %{y:.1f} bpm<extra></extra>' }
+            ], fadigaLayout('#1f77b4', '#ff7f0e'));
+        }
+
+        function updateDashboard() {
+            const elementsToFade = [document.getElementById('tablesSection'), document.getElementById('chartsSection')];
+            elementsToFade.forEach(el => el.classList.add('fade-out'));
+            
+            setTimeout(() => {
+                const df_400m = calculateMetrics(currentEvaluation.data_400m);
+                const df_200m = calculateMetrics(currentEvaluation.data_200m);
+                fillTable('table200m', df_200m);
+                fillTable('table400m', df_400m);
+                createCharts(df_400m, df_200m);
+                      elementsToFade.forEach(el => el.classList.remove('fade-out'));
+                resizeAllPlots();
+            }, 300);
+        }
+
+        document.getElementById('evaluationSwitch').addEventListener('change', function() {
+            document.getElementById('currentEvaluation').textContent = this.checked ? '01/03/2025' : '01/01/2025';
+            currentEvaluation = this.checked ? evaluation2 : evaluation1;
+            updateDashboard();
+        });
+        // --- Modal Logic ---
+        const modal = document.getElementById('comparisonModal');
+        const btn = document.getElementById('compareBtn');
+        const span = document.getElementById('modalCloseBtn');
+
+        btn.onclick = function() {
+            modal.style.display = "block";
+            if (!isModalPopulated) {
+                populateComparisonModal();
+                isModalPopulated = true;
+            }
+            resizeAllPlots();
+        }
+        span.onclick = function() { modal.style.display = "none";
+        }
+        window.onclick = function(event) {
+            if (event.target == modal) { modal.style.display = "none";
+            }
+        }
+
+        function populateComparisonModal() {
+            const data1 = {
+                "200m": calculateMetrics(evaluation1.data_200m),
+                "400m": calculateMetrics(evaluation1.data_400m)
+            };
+            const data2 = {
+                "200m": calculateMetrics(evaluation2.data_200m),
+                "400m": calculateMetrics(evaluation2.data_400m)
+            };
+            createDifferenceTable('diff_table_200m', data2['200m'], data1['200m']);
+            createDifferenceTable('diff_table_400m', data2['400m'], data1['400m']);
+            createComparisonCharts(data1, data2);
+        }
+
+        function createDifferenceTable(tableId, newData, oldData) {
+            const tbody = document.querySelector(`#${tableId} tbody`);
+            tbody.innerHTML = '';
+            const keys = ['Time_per_25m', 'Stroke_Count', 'Velocity', 'SL', 'IE', 'Swolf', 'Stroke_Rate'];
+            const decimals = [1, 0, 2, 2, 2, 1, 1];;
+            // Metrics where a positive difference is good
+            const positiveIsGood = ['Velocity', 'SL', 'IE'];
+            const goodColor = '#094205';
+            const badColor = '#630705';
+
+            for (let i = 0; i < newData.Distance.length; i++) {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = newData.Distance[i];
+                keys.forEach((key, j) => {
+                    const cell = row.insertCell();
+                    const newVal = newData[key][i];
+                    const oldVal = oldData[key][i];
+                    const diff = newVal - 
+                    oldVal;
+                    
+                    let color = '';
+                    if (positiveIsGood.includes(key)) {
+                        if (diff > 0) color = goodColor;
+                         else if (diff < 0) color = badColor;
+                    } else { // For these metrics, a negative difference is good
+                        if (diff < 0) color = goodColor;
+                         else if (diff > 0) color = badColor;
+                    }
+
+                    const diffSign = diff > 0 ? '+' : '';
+                    cell.innerHTML = `${newVal.toFixed(decimals[j])} <span style="color: ${color}; font-weight: bold;">(${diffSign}${diff.toFixed(decimals[j])})</span>`;
+                   });
+                }
+        }
+        
+        function createComparisonCharts(d1, d2) {
+            const compLayout = (title, y_title) => ({ ...chartLayout, title: {text: null}, xaxis: {title: 'Distância (m)'}, yaxis: {title: y_title} });
+            const traces = (metric, y_title) => [
+                { x: d1['200m'].Distance, y: d1['200m'][metric], mode: 'lines+markers', name: '200m (01/01)', line: { color: '#ff7f0e', dash: 'dash' } },
+                { x: d2['200m'].Distance, y: d2['200m'][metric], mode: 'lines+markers', name: '200m (01/03)', line: { color: '#ff7f0e' } },
+                { x: d1['400m'].Distance, y: d1['400m'][metric], mode: 'lines+markers', name: '400m (01/01)', line: { color: '#1f77b4', 
+                dash: 'dash' } },
+                { x: d2['400m'].Distance, y: d2['400m'][metric], mode: 'lines+markers', name: '400m (01/03)', line: { color: '#1f77b4' } }
+            ];
+            Plotly.newPlot('comp_chart_vel', traces('Velocity'), compLayout('Velocidade', 'Velocidade (m/s)'));
+            Plotly.newPlot('comp_chart_sl', traces('SL'), compLayout('SL', 'SL (m/braçada)'));
+            Plotly.newPlot('comp_chart_ie', traces('IE'), compLayout('IE', 'IE'));
+            Plotly.newPlot('comp_chart_swolf', traces('Swolf'), compLayout('Swolf', 'Swolf'));
+            const fadigaLayoutComp = (y1_color, y2_color) => ({
+                ...chartLayout, title: {text: null},
+                xaxis: {title: 'Distância (m)'},
+                yaxis: { title: 'Tempo Médio (s)', titlefont: {color: y1_color}, tickfont: {color: y1_color} },
+                yaxis2: { title: 'Taxa Média (bpm)', titlefont: {color: y2_color}, tickfont: {color: y2_color}, 
+                overlaying: 'y', side: 'right' }
+            });
+            Plotly.newPlot('comp_chart_fadiga_200m', [
+                 { x: d1['200m'].Distance, y: d1['200m'].Rolling_Time_per_25m, mode: 'lines+markers', name: 'Tempo (01/01)', line: {color: '#1f77b4', dash: 'dash'} },
+                 { x: d2['200m'].Distance, y: d2['200m'].Rolling_Time_per_25m, mode: 'lines+markers', name: 'Tempo (01/03)', line: {color: '#1f77b4'} },
+                 { x: d1['200m'].Distance, y: d1['200m'].Rolling_Stroke_Rate, mode: 'lines+markers', name: 'Taxa (01/01)', yaxis: 'y2', line: {color: '#ff7f0e', dash: 'dash'} },
+                  { x: d2['200m'].Distance, y: d2['200m'].Rolling_Stroke_Rate, mode: 'lines+markers', name: 'Taxa (01/03)', yaxis: 'y2', line: {color: '#ff7f0e'} }
+            ], fadigaLayoutComp('#1f77b4', '#ff7f0e'));
+            Plotly.newPlot('comp_chart_fadiga_400m', [
+                 { x: d1['400m'].Distance, y: d1['400m'].Rolling_Time_per_25m, mode: 'lines+markers', name: 'Tempo (01/01)', line: {color: '#1f77b4', dash: 'dash'} },
+                 { x: d2['400m'].Distance, y: d2['400m'].Rolling_Time_per_25m, mode: 'lines+markers', name: 'Tempo (01/03)', line: {color: '#1f77b4'} },
+                 { x: d1['400m'].Distance, y: d1['400m'].Rolling_Stroke_Rate, mode: 'lines+markers', name: 'Taxa (01/01)', yaxis: 'y2', line: {color: '#ff7f0e', dash: 'dash'} },
+                  { x: d2['400m'].Distance, y: d2['400m'].Rolling_Stroke_Rate, mode: 'lines+markers', name: 'Taxa (01/03)', yaxis: 'y2', line: {color: '#ff7f0e'} }
+            ], fadigaLayoutComp('#1f77b4', '#ff7f0e'));
+        }
+
+        // --- Initial Load & Resize ---
+        function resizeAllPlots() {
+            const plotDivs = document.querySelectorAll('.chart');
+            plotDivs.forEach(div => {
+                if (div.id && Plotly.Plots) {
+                    Plotly.Plots.resize(document.getElementById(div.id));
+                }
+            });
+        }
+        
+        window.addEventListener('load', () => {
+             updateDashboard();
+             window.addEventListener('resize', resizeAllPlots);
+        });
+
+    </script>
+</body>
+</html>
